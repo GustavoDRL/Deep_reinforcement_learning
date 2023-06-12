@@ -1,0 +1,1 @@
+{"agent":["icon_agent_144.png",1,[2,2]],"file":"bckgnd_720_10.png","grid":10,"obstacles":["icon_obstacle_144.png",4,[[6,7],[5,1],[6,4],[1,7]]],"pheromones_duration":32,"reference":"icon_polarStar_48.png","reward":["icon_reward_144.png",1,[1,8]],"start":["icon_startPosition_144.png",1,[2,2]],"villains":["icon_villain_144.png",3,[[2,5],[8,4],[1,1]]]}
