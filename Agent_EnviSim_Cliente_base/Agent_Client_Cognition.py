@@ -19,7 +19,7 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
 
 # este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
 
-
+random.seed()
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
     if np.sum(vecInpSens) != 1:  # se o número de bits for '!= 1, 'inferir' retornará um erro (-1)
@@ -48,52 +48,69 @@ def infer(vecInpSens: np.int32) -> int:
     print('infer: ', len(vecInpSens), ' ', vecInpSens)
     outy = -1  # por default, o índice de saída é um índice de erro
     sense_t = vecInpSens.transpose()
-    m_decision = np.array([[0, 0, 0.5, 0.25, 0.25, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0, 0, 0, 0]])
+    m_decision = np.array([[0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 0] = "inp_nothing"
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 1] = "inp_breeze"
+                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [ 2] = "inp_danger"
+                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 3] = "inp_flash"
+                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 4] = "inp_goal"
+                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 5] = "inp_initial"
+                           [0.0, 0.0, 0.0, 0.3, 0.3, 0.4],  # [ 6] = "inp_obstruction"
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 7] = "inp_stench"
+                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
+                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [10] = "inp_bs" brisa/stench
+                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [11] = "inp_fs" flash/stench
+                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [12] = "inp_boundary" (borda)
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [15] = "inp_cannot"
+                           [0, 0, 0, 0, 0, 0],
+                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [17] = "inp_grabbed"
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0],
+                           [0, 0, 0, 0, 0, 0]])
+    dot_p = np.dot(vecInpSens, m_decision)
+    prob = 0
+    ouro = 0
+    decisao = [0, 1, 3, 11, 12, 13]
+    act = 0
     if len(vecInpSens) == 1:  # * quando ocorreu apenas 1 requisição de informação
         if np.sum(vecInpSens) == 0 :  # se num_input_bits for zero
             return outy  # retorna erro (-1)
-        elif vecInpSens[0,0]==1:
-
-            print(vecInpSens)
-            outy = 3
+        elif ouro == 1:
+            outy = 0
             print('out: ', OutNeurons[outy])
+            return outy 
         else:
+            if vecInpSens[0, 4] == 0:
+                ouro = 1
+            linha_sem0 = dot_p[np.any(dot_p != 0, axis=1)]
+            random_number = random.randrange(0, 100)/100
+            for element in linha_sem0[0]:
+                prob = element + prob
+                print('random_number', random_number)
+                print('prob', prob)
+                if prob < random_number:
+                    act = act+1
+                    print('act', act)
+                else:
+                    outy = decisao[act]
+                    act = 0
+                    prob = 0
+                    print('out: ', OutNeurons[outy])
+                    return outy
 
-            print(vecInpSens)
-            outy = 11
-            print('out: ', OutNeurons[outy])
     else:  # se não com array vecInpSens vazio, len() = 0
         return outy  # retorna erro (-1)
     return outy

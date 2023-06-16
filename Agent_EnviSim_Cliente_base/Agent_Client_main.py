@@ -21,7 +21,7 @@ host_name = socket.gethostname()  # obter o nome deste computador
 host_IP = socket.gethostbyname(host_name)  # obter o endereço IP deste computador (intranet)
 IPC_port = 15051  # número do PORT (use o mesmo número de PORTA no programa EnviSim)
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # criar um socket = sock
-server_address = ("172.29.96.1", IPC_port)  # a variável endereço_servidor contém: o IP + porta_IPC
+server_address = ("172.26.144.1", IPC_port)  # a variável endereço_servidor contém: o IP + porta_IPC
 # apenas para teste: imprimir a variável endereço_servidor
 # print('server: {} - port: {}'.format(host_IP,IPC_port))
 # print('server: {}'.format(server_address))
