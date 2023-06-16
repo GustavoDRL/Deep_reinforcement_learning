@@ -20,6 +20,7 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
 # este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
 
 random.seed()
+caminho = [0, 0, 0, 0, 0, 0]
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
     if np.sum(vecInpSens) != 1:  # se o número de bits for '!= 1, 'inferir' retornará um erro (-1)
@@ -84,6 +85,7 @@ def infer(vecInpSens: np.int32) -> int:
     prob = 0
     ouro = 0
     decisao = [0, 1, 3, 11, 12, 13]
+
     act = 0
     if len(vecInpSens) == 1:  # * quando ocorreu apenas 1 requisição de informação
         if np.sum(vecInpSens) == 0 :  # se num_input_bits for zero
@@ -91,7 +93,8 @@ def infer(vecInpSens: np.int32) -> int:
         elif ouro == 1:
             outy = 0
             print('out: ', OutNeurons[outy])
-            return outy 
+            ouro = 0
+            return outy
         else:
             if vecInpSens[0, 4] == 0:
                 ouro = 1
@@ -99,16 +102,15 @@ def infer(vecInpSens: np.int32) -> int:
             random_number = random.randrange(0, 100)/100
             for element in linha_sem0[0]:
                 prob = element + prob
-                print('random_number', random_number)
-                print('prob', prob)
                 if prob < random_number:
                     act = act+1
-                    print('act', act)
                 else:
                     outy = decisao[act]
+                    caminho[act] = caminho[act] + 1
                     act = 0
                     prob = 0
                     print('out: ', OutNeurons[outy])
+                    print('caminho: ', caminho)
                     return outy
 
     else:  # se não com array vecInpSens vazio, len() = 0

@@ -39,7 +39,7 @@ while msg != 'esc':
         # print('<< begin >>')
         try:
             sock.connect(server_address)  # tenta conetar com o servidor na porta definida
-            print('Conectado ao Servidor: %s >> porta: %s' % server_address)
+            print('Conectado ao Servidor: %s >> porta: % s' % server_address)
             sttMM = Stt.RECEIVING  # depois de conectar, mude a FSM para o estado RECEIVING
         except socket.timeout:  # exceção - tempo esgotado
             # print('ERRO: tempo limite do socket')
