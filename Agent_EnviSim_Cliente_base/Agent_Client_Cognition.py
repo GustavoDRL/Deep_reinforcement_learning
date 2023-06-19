@@ -20,7 +20,9 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
 # este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
 
 random.seed()
-caminho = [0, 0, 0, 0, 0, 0]
+caminho = [0, 0, 0, 0] #[frente, lado1, tras, lado2]
+index_c = 0
+estado = 0
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
     if np.sum(vecInpSens) != 1:  # se o número de bits for '!= 1, 'inferir' retornará um erro (-1)
@@ -81,23 +83,26 @@ def infer(vecInpSens: np.int32) -> int:
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0]])
+    decisao = [0, 1, 3, 11, 12, 13]
     dot_p = np.dot(vecInpSens, m_decision)
     prob = 0
-    ouro = 0
-    decisao = [0, 1, 3, 11, 12, 13]
-
     act = 0
+    global estado
     if len(vecInpSens) == 1:  # * quando ocorreu apenas 1 requisição de informação
         if np.sum(vecInpSens) == 0 :  # se num_input_bits for zero
             return outy  # retorna erro (-1)
-        elif ouro == 1:
+        if estado == 1:
             outy = 0
             print('out: ', OutNeurons[outy])
-            ouro = 0
+            estado = 2
             return outy
+        if estado == 2:
+            print('sair')
         else:
-            if vecInpSens[0, 4] == 0:
-                ouro = 1
+            #Direciona o codigo para o caso deterministico para sempre ir direto ao ouro
+            if vecInpSens[0, 4] == 1:
+                estado = 1
+            #Deslocamento randomico pelo mapa para tenmtar achar o ouro
             linha_sem0 = dot_p[np.any(dot_p != 0, axis=1)]
             random_number = random.randrange(0, 100)/100
             for element in linha_sem0[0]:
@@ -106,7 +111,7 @@ def infer(vecInpSens: np.int32) -> int:
                     act = act+1
                 else:
                     outy = decisao[act]
-                    caminho[act] = caminho[act] + 1
+                    bussola(act)
                     act = 0
                     prob = 0
                     print('out: ', OutNeurons[outy])
@@ -116,7 +121,22 @@ def infer(vecInpSens: np.int32) -> int:
     else:  # se não com array vecInpSens vazio, len() = 0
         return outy  # retorna erro (-1)
     return outy
-
+# Funcao que usa os parametros de deslocamento para gerar uma bussola
+def bussola(act):
+    global index_c
+    if index_c < 0:
+        index_c += 4
+    if index_c > 3:
+        index_c -= 4
+    if act == 2:
+        caminho[index_c] += 1
+    elif act == 3:
+        index_c += 1
+    elif act == 4:
+        index_c -= 1
+    elif act == 5:
+        index_c -= 2
+#Usa a bussola para convergir o deslocamento de forma zerar o vetor caminho
 
 # este método cria uma msg para o EnviSim solicitando informações do Wumpus World
 # input: indx de uma msg a ser enviada, e a distância da posição atual na grade
