@@ -18,15 +18,15 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
     DIRn, DIRne, DIRe, DIRse, DIRs, DIRsw, DIRw, DIRnw
 
 
-# este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
+#inicia seed
 random.seed(42)
-
 #Variaveis Globais
 caminho = [0, 0] #[frente/tras, esquerda/direita]
 estado = 0
+# este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
-    if np.sum(vecInpSens) != 1:  # se o número de bits for '!= 1, 'inferir' retornará um erro (-1)
+    if np.sum(vecInpSens) != len(vecInpSens):  # se o número de bits for '!= 1, 'inferir' retornará um erro (-1)
         return outy
     else:
         inx = np.argmax(vecInpSens)  # isso obtém o índice do bit ativo dentro do vetor de feedback
@@ -44,13 +44,13 @@ def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
         else:
             outy = OutNeurons.index("out_act_nill")
     return outy
-
-
 # MÉTODO NO QUAL VOCÊ VAI INSERIR INTELIGÊNCIA NO AGENTE !!!
 # este método é usado para 'inferência', ou seja, para tomar decisões
 def infer(vecInpSens: np.int32) -> int:
     print('infer: ', len(vecInpSens), ' ', vecInpSens)
     outy = -1  # por default, o índice de saída é um índice de erro
+
+    # Matrizes com as p
     #                    pegar/sair/frente/esquerda/direita/tras
     m_decision = np.array([[0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 0] = "inp_nothing"
                            [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 1] = "inp_breeze"
@@ -87,22 +87,55 @@ def infer(vecInpSens: np.int32) -> int:
     #                    pegar/sair/frente/esquerda/direita/tras
     m_decisionL = np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 0] = "inp_nothing"
                             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 1] = "inp_breeze"
-                            [1.0, 1.0, 0.0, 1.0, 0.6, 1.0],  # [ 2] = "inp_danger"
-                            [1.0, 1.0, 0.0, 1.0, 0.0, 0.0],  # [ 3] = "inp_flash"
-                            [1.0, 1.0, 0.0, 1.0, 0.0, 0.0],  # [ 4] = "inp_goal"
+                            [1.0, 1.0, 10.0, 0.0, 1.0, 1.0],  # [ 2] = "inp_danger"
+                            [0.0, 0.0, 1.0, 100.0, 0.0, 0.0],  # [ 3] = "inp_flash"
+                            [0.0, 0.0, 0.0, 100.0, 0.0, 0.0],  # [ 4] = "inp_goal"
                             [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 5] = "inp_initial"
-                            [1.0, 1.0, 0.0, 0.5, 0.0, 0.5],  # [ 6] = "inp_obstruction"
-                            [1.0, 1.0, 0.8, 0.1, 0.1, 0.0],  # [ 7] = "inp_stench"
-                            [1.0, 1.0, 0.0, 0.0, 1.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
-                            [1.0, 1.0, 1.0, 0.0, 0.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
-                            [1.0, 1.0, 0.8, 0.1, 0.1, 0.0],  # [10] = "inp_bs" brisa/stench
-                            [1.0, 1.0, 1.0, 0.0, 0.0, 0.0],  # [11] = "inp_fs" flash/stench
-                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [12] = "inp_boundary" (borda)
+                            [1.0, 1.0, 10.0, 0.0, 10.0, 1.0],  # [ 6] = "inp_obstruction"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 7] = "inp_stench"
+                            [1.0, 1.0, 0.0, 10.0, 1.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
+                            [1.0, 1.0, 1.0, 10.0, 1.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
+                            [1.0, 1.0, 1.0, 10.0, 1.0, 0.0],  # [10] = "inp_bs" brisa/stench
+                            [1.0, 1.0, 1.0, 10.0, 1.0, 0.0],  # [11] = "inp_fs" flash/stench
+                            [1.0, 1.0, 10.0, 0.0, 1.0, 1.0],  # [12] = "inp_boundary" (borda)
                             [0, 0, 0, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0],
-                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [15] = "inp_cannot"
+                            [1.0, 1.0, 10.0, 0.0, 1.0, 1.0],  # [15] = "inp_cannot"
                             [0, 0, 0, 0, 0, 0],
-                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [17] = "inp_grabbed"
+                            [1.0, 1.0, 10.0, 0.0, 1.0, 1.0],  # [17] = "inp_grabbed"
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0]])
+    #                    pegar/sair/frente/esquerda/direita/tras
+    m_decisionR = np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 0] = "inp_nothing"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 1] = "inp_breeze"
+                            [1.0, 1.0, 10.0, 1.0, 0.0, 1.0],  # [ 2] = "inp_danger"
+                            [1.0, 1.0, 10.0, 1.0, 0.0, 0.0],  # [ 3] = "inp_flash"
+                            [0.0, 0.0, 0.0, 0.0, 100.0, 0.0],  # [ 4] = "inp_goal"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 5] = "inp_initial"
+                            [1.0, 1.0, 1.0, 0.0, 10.0, 1.0],  # [ 6] = "inp_obstruction"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 7] = "inp_stench"
+                            [1.0, 1.0, 0.0, 1.0, 10.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
+                            [1.0, 1.0, 1.0, 1.0, 10.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
+                            [1.0, 1.0, 1.0, 1.0, 10.0, 0.0],  # [10] = "inp_bs" brisa/stench
+                            [1.0, 1.0, 1.0, 1.0, 10.0, 0.0],  # [11] = "inp_fs" flash/stench
+                            [1.0, 1.0, 10.0, 1.0, 0.0, 1.0],  # [12] = "inp_boundary" (borda)
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [1.0, 1.0, 10.0, 1.0, 0.0, 1.0],  # [15] = "inp_cannot"
+                            [0, 0, 0, 0, 0, 0],
+                            [1.0, 1.0, 10.0, 1.0, 0.0, 1.0],  # [17] = "inp_grabbed"
                             [0, 0, 0, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0],
@@ -118,8 +151,11 @@ def infer(vecInpSens: np.int32) -> int:
                             [0, 0, 0, 0, 0, 0],
                             [0, 0, 0, 0, 0, 0]])
     decisao = [0, 1, 3, 11, 12, 13]
-    linha_sem0 = np.dot(vecInpSens[0], m_decision)
-    print("linha_sem0", linha_sem0)
+    prob_entrada_f = np.dot(vecInpSens[0], m_decision)
+    prob_entrada_l = np.dot(vecInpSens[1], m_decisionL)
+    prob_entrada_r = np.dot(vecInpSens[2], m_decisionR)
+    prob_3Entradas = np.multiply(np.multiply(prob_entrada_f, prob_entrada_l), prob_entrada_r)
+    print("prob_3Entradas", prob_3Entradas)
     prob = 0
     act = 0
     global estado
@@ -136,8 +172,8 @@ def infer(vecInpSens: np.int32) -> int:
             estado = 1
         #Deslocamento randomico pelo mapa para tenmtar achar o ouro
         random_number = random.randrange(0, 100)/100
-        print('random_number', random_number )
-        for element in linha_sem0:
+        print('random_number', random_number)
+        for element in prob_3Entradas:
             prob = element + prob
             if prob < random_number:
                 act = act+1

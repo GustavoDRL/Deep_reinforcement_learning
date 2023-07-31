@@ -232,7 +232,7 @@ strCode = ''  # str que recebe o código para exceções, erros, etc.
 idxInpSensor: int = 0  # índice que indica qual sensor de entrada foi ativado
 decision: int = 0  # índice que é retornado de Cogniton.infer() -> int
 
-delaySec = 0.5  # atraso em segundos apenas para efeitos visuais
+delaySec = 0.8  # atraso em segundos apenas para efeitos visuais
 
 # ---.(end).---  variables and constants ---.---
 # sys.exit(0)
