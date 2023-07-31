@@ -22,8 +22,7 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
 random.seed(42)
 
 #Variaveis Globais
-caminho = [0, 0, 0, 0] #[frente, lado1, tras, lado2]
-index_c = 0
+caminho = [0, 0] #[frente/tras, esquerda/direita]
 estado = 0
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
@@ -52,18 +51,18 @@ def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
 def infer(vecInpSens: np.int32) -> int:
     print('infer: ', len(vecInpSens), ' ', vecInpSens)
     outy = -1  # por default, o índice de saída é um índice de erro
-    sense_t = vecInpSens.transpose()
-    m_decision = np.array([[0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 0] = "inp_nothing"
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 1] = "inp_breeze"
+    #                    pegar/sair/frente/esquerda/direita/tras
+    m_decision = np.array([[0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 0] = "inp_nothing"
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 1] = "inp_breeze"
                            [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [ 2] = "inp_danger"
                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 3] = "inp_flash"
                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 4] = "inp_goal"
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 5] = "inp_initial"
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 5] = "inp_initial"
                            [0.0, 0.0, 0.0, 0.3, 0.3, 0.4],  # [ 6] = "inp_obstruction"
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 7] = "inp_stench"
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 7] = "inp_stench"
                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [10] = "inp_bs" brisa/stench
+                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [10] = "inp_bs" brisa/stench
                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [11] = "inp_fs" flash/stench
                            [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [12] = "inp_boundary" (borda)
                            [0, 0, 0, 0, 0, 0],
@@ -85,181 +84,71 @@ def infer(vecInpSens: np.int32) -> int:
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0],
                            [0, 0, 0, 0, 0, 0]])
+    #                    pegar/sair/frente/esquerda/direita/tras
+    m_decisionL = np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 0] = "inp_nothing"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 1] = "inp_breeze"
+                            [1.0, 1.0, 0.0, 1.0, 0.6, 1.0],  # [ 2] = "inp_danger"
+                            [1.0, 1.0, 0.0, 1.0, 0.0, 0.0],  # [ 3] = "inp_flash"
+                            [1.0, 1.0, 0.0, 1.0, 0.0, 0.0],  # [ 4] = "inp_goal"
+                            [1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 5] = "inp_initial"
+                            [1.0, 1.0, 0.0, 0.5, 0.0, 0.5],  # [ 6] = "inp_obstruction"
+                            [1.0, 1.0, 0.8, 0.1, 0.1, 0.0],  # [ 7] = "inp_stench"
+                            [1.0, 1.0, 0.0, 0.0, 1.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
+                            [1.0, 1.0, 1.0, 0.0, 0.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
+                            [1.0, 1.0, 0.8, 0.1, 0.1, 0.0],  # [10] = "inp_bs" brisa/stench
+                            [1.0, 1.0, 1.0, 0.0, 0.0, 0.0],  # [11] = "inp_fs" flash/stench
+                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [12] = "inp_boundary" (borda)
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [15] = "inp_cannot"
+                            [0, 0, 0, 0, 0, 0],
+                            [1.0, 1.0, 0.0, 0.4, 0.4, 0.2],  # [17] = "inp_grabbed"
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0],
+                            [0, 0, 0, 0, 0, 0]])
     decisao = [0, 1, 3, 11, 12, 13]
-    dot_p = np.dot(vecInpSens, m_decision)
-    linha_sem0 = dot_p[np.any(dot_p != 0, axis=1)]
+    linha_sem0 = np.dot(vecInpSens[0], m_decision)
+    print("linha_sem0", linha_sem0)
     prob = 0
     act = 0
     global estado
-    if len(vecInpSens) == 1:  # * quando ocorreu apenas 1 requisição de informação
-        if np.sum(vecInpSens) == 0 :  # se num_input_bits for zero
-            return outy  # retorna erro (-1)
         # Pegar ouro
-        if estado == 1:
-            outy = 0
-            print('out: ', OutNeurons[outy])
-            estado = 2
-            print('Estado: ', estado)
-            return outy
+    if estado == 1:
+        outy = 0
+        print('out: ', OutNeurons[outy])
+        print('Estado: ', estado)
+        return outy
         # Voltando
-        if estado == 2:
-            decisao_sair = sair(vecInpSens, m_decision)
-            volta(decisao_sair)
-            outy = decisao[decisao_sair]
-            #debug
-            time.sleep(1.5)
-            print('sense[0,2]: ', vecInpSens[0, 2])
-            print('index: ', index_c)
-            print('caminho: ', caminho)
-            print('Sair: ', sair(vecInpSens, m_decision))
-            print('out: ', OutNeurons[outy])
-
-            return outy
-        else:
-            #Direciona o codigo para o caso deterministico para sempre ir direto ao ouro
-            if vecInpSens[0, 4] == 1:
-                estado = 1
-            #Deslocamento randomico pelo mapa para tenmtar achar o ouro
-            random_number = random.randrange(0, 100)/100
-            for element in linha_sem0[0]:
-                prob = element + prob
-                if prob < random_number:
-                    act = act+1
-                else:
-                    outy = decisao[act]
-                    bussola(act)
-                    act = 0
-                    prob = 0
-                    print('out: ', OutNeurons[outy])
-                    print('caminho: ', caminho)
-                    return outy
-
-    else:  # se não com array vecInpSens vazio, len() = 0
-        return outy  # retorna erro (-1)
-    return outy
-# Funcao que usa os parametros de deslocamento para gerar uma bussola que aponta os sentidos do deslocamento
-def bussola(act):
-    global index_c
-    if index_c < 0:
-        index_c += 4
-    if index_c > 3:
-        index_c -= 4
-    if act == 2:
-        caminho[index_c] += 1
-    elif act == 3:
-        index_c += 1
-    elif act == 4:
-        index_c -= 1
-    elif act == 5:
-        index_c -= 2
-    if index_c < 0:
-        index_c += 4
-    if index_c > 3:
-        index_c -= 4
-def volta(act):
-    global index_c
-    if index_c < 0:
-        index_c += 4
-    if index_c > 3:
-        index_c -= 4
-    if act == 2:
-        caminho[index_c] -= 1
-    elif act == 3:
-        index_c += 1
-    elif act == 4:
-        index_c -= 1
-    elif act == 5:
-        index_c -= 2
-    if index_c < 0:
-        index_c += 4
-    if index_c > 3:
-        index_c -= 4
-#Usa a bussola para convergir o deslocamento de forma zerar o vetor caminho
-def sair(vector, matriz):
-    saida = 1
-    if vector[0,2] != 1 and vector[0,12] != 1 and vector[0,6] != 1:
-        if index_c == 0 or index_c == 2:
-            # virado para lado contrario
-            if caminho[0] > caminho[2] and index_c == 0:
-                saida = 5
-                return saida
-            #virado para lado certo
-            if caminho[0] < caminho[2] and index_c == 0:
-                saida = 2
-                return saida
-            #virado para lado certo
-            if caminho[0] > caminho[2] and index_c == 2:
-                saida = 2
-                return saida
-            #virado para lado contrario
-            if caminho[0] < caminho[2] and index_c == 2:
-                saida = 5
-                return saida
-            else:
-                saida = 3
-                return saida
-        elif index_c == 1 or index_c == 3 and caminho[2]!=0:
-            # virado para lado contrario
-            if caminho[1] > caminho[3] and index_c == 1:
-                saida = 5
-                return saida
-            #virado para lado certo
-            if caminho[1] < caminho[3] and index_c == 1:
-                saida = 2
-                return saida
-            #virado para lado certo
-            if caminho[1] > caminho[3] and index_c == 3:
-                saida = 2
-                return saida
-            #virado para lado contrario
-            if caminho[1] < caminho[3] and index_c == 3:
-                saida = 5
-                return saida
-            else:
-                saida = 3
-                return saida
     else:
-        if index_c == 1 or index_c == 3:
-            # virar para esquerda
-            if caminho[0] > caminho[2] and index_c == 1:
-                saida = 3
-                return saida
-            #virar para direita
-            if caminho[0] < caminho[2] and index_c == 1:
-                saida = 4
-                return saida
-            #virar para direita
-            if caminho[0] > caminho[2] and index_c == 3:
-                saida = 4
-                return saida
-            #viradar para direita
-            if caminho[0] < caminho[2] and index_c == 3:
-                saida = 3
-                return saida
+        #Direciona o codigo para o caso deterministico para sempre ir direto ao ouro
+        if vecInpSens[0, 4] == 1:
+            estado = 1
+        #Deslocamento randomico pelo mapa para tenmtar achar o ouro
+        random_number = random.randrange(0, 100)/100
+        print('random_number', random_number )
+        for element in linha_sem0:
+            prob = element + prob
+            if prob < random_number:
+                act = act+1
+                print('prob ', prob)
             else:
-                saida = 3
-                return saida
-        elif index_c == 0 or index_c == 1:
-            # virar para direita
-            if caminho[1] > caminho[3] and index_c == 0:
-                saida = 4
-                return saida
-            #virarar para esquerda
-            if caminho[1] < caminho[3] and index_c == 0:
-                saida = 3
-                return saida
-            #virar para esquerda
-            if caminho[1] > caminho[3] and index_c == 2:
-                saida = 3
-                return saida
-            #virar para direita
-            if caminho[1] < caminho[3] and index_c == 2:
-                saida = 4
-                return saida
-            else:
-                saida = 4
-                return saida
-    return saida
+                print('act ', act)
+                outy = decisao[act]
+                print('out: ', OutNeurons[outy])
+                print('caminho: ', caminho)
+                return outy
+
 # este método cria uma msg para o EnviSim solicitando informações do Wumpus World
 # input: indx de uma msg a ser enviada, e a distância da posição atual na grade
 def create_msg(indx_out: int, dist: int) -> str:
