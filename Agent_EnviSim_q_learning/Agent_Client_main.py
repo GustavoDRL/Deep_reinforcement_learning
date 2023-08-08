@@ -3,6 +3,7 @@
 
 import socket
 import time
+import csv
 import keyboard as kb
 
 # ------------------------ setup -----------------------------
@@ -11,7 +12,8 @@ from Agent_Client_Cognition import *  # importa todos os métodos/funções de C
 # Nota: todas as definições de vars e inicializações estão no arquivo 'Agent_Client_Setup.py'
 from Agent_Client_Setup import Stt, SubStt, InfoReqSeq, sttMM, sttSUBfsm, msg, answES, \
     energy, carryRWD, iterNum, strCode, InpSensors, idxInpSensor, nofInfoRequest, cntNofReqs,\
-    delaySec, keyMagREQ, REQfwd, REQrst, keyMwpPOS, OUTdie, OUTrst, OUTsuc, posX, posY
+    delaySec, keyMagREQ, REQfwd, REQrst, keyMwpPOS, OUTdie, OUTrst, OUTsuc, posX, posY, \
+    modoDados, nofWandSteps, subSttWand, seqWand, arqv_csv
 # ---(end)---------------- setup -----------------------------
 
 # ------ MAIN = here starts the main program  ------
@@ -21,7 +23,7 @@ host_name = socket.gethostname()  # obter o nome deste computador
 host_IP = socket.gethostbyname(host_name)  # obter o endereço IP deste computador (intranet)
 IPC_port = 15051  # número do PORT (use o mesmo número de PORTA no programa EnviSim)
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # criar um socket = sock
-server_address = (host_IP, IPC_port) # a variável endereço_servidor contém: o IP + porta_IPC
+server_address = (host_IP, IPC_port)  # a variável endereço_servidor contém: o IP + porta_IPC
 # apenas para teste: imprimir a variável endereço_servidor
 # print('server: {} - port: {}'.format(host_IP,IPC_port))
 # print('server: {}'.format(server_address))
@@ -39,7 +41,7 @@ while msg != 'esc':
         # print('<< begin >>')
         try:
             sock.connect(server_address)  # tenta conetar com o servidor na porta definida
-            print('Conectado ao Servidor: %s >> porta: % s' % server_address)
+            print('Conectado ao Servidor: %s >> porta: %s' % server_address)
             sttMM = Stt.RECEIVING  # depois de conectar, mude a FSM para o estado RECEIVING
         except socket.timeout:  # exceção - tempo esgotado
             # print('ERRO: tempo limite do socket')
@@ -71,21 +73,24 @@ while msg != 'esc':
     # Aqui, a "mente" do agente toma decisões e gera: comando/ação/requisição
 
     while sttMM == Stt.DECIDING:
-        print('<< decidindo >> ', (energy - iterNum))
+        # print('<< decidindo >> ', (energy - iterNum))
+
+        if modoDados == 1:  # se estiver no modo de coleta de dados, vai para Stt.WANDERING
+            sttMM = Stt.WANDERING
+            break
 
         if iterNum >= energy:  # teste: 'jogo acabou'? O agente não completou a missão
             print('O agente não tem mais ENERGIA!')  # se o jogo acabar, imprime essa mensagem
             strCode = 'semEnergia'  # o agente não tem mais energia - MORREU...
             sttMM = Stt.EXCEPTIONS  # muda o estado para EXCEPTIONS
             break
-        else:
-            iterNum = iterNum + 1  # contagem do número de iterações
 
         # ATENÇÃO: isso está dentro da MAIN STATE-MACHINE, mas é uma FSM secundária
         # esta sub-FSM controla quantas vezes o agente solicita informações do EnviSim
         while sttSUBfsm == SubStt.RES:  # após reiniciar a cena, a subFSM sempre começa a solicitar dados
             if InpSensors[idxInpSensor] == 'inp_' + OUTrst:  # se retornar 'inp_restarted'
                 nofIter = 0  # redefinir o número de iterações (energia resetada)
+                iterNum = 0
                 sttSUBfsm = SubStt.START  # muda o estado desta subFSM para 'solicitar' informações do EnviSim
             else:
                 strCode = 'erro => esperava reiniciado...'  # erro não reiniciado
@@ -167,8 +172,6 @@ while msg != 'esc':
 
         while sttSUBfsm == SubStt.WAITCM:
             # este atraso é apenas para efeitos visuais - remova-o para simulações mais rápidas
-            if delaySec > 0:
-                time.sleep(delaySec)  # pausar a execução por dt segundos
             sttSUBfsm = SubStt.CNT  # mudar para o estado CNT
             break
 
@@ -180,6 +183,10 @@ while msg != 'esc':
     # deveria 'SALVAR' uma missão? deveria simplesmente 'REINICIAR' EnviSim? (é aberto)
     while sttMM == Stt.EXCEPTIONS:
         # print('EXCEPTION - dealing with a special msg')  # apenas imprime uma nota para esta situação
+
+        if modoDados == 1:  # se estiver no modo de coleta de dados, vai para Stt.WANDERING
+            sttMM = Stt.WANDERING
+            break
 
         if strCode == OUTrst:  # recebeu 'restarted' - primeira coisa a fazer: pedir informações
             msg = '{\"' + keyMagREQ + '\":[\"' + REQfwd + '\",1]}'  # solicita informações sobre 1 posição à frente
@@ -230,7 +237,7 @@ while msg != 'esc':
         # print('<< receiving >>')
         try:
             answES = sock.recv(256)  # recebe uma mensagem com até 256 caracteres
-            print('resposta_conn: %s' % answES)
+            #print('resposta_conn: %s' % answES)
             sttMM = Stt.INTERPRETING  # resposta recebida, altera o estado para INTERPRETING
         except socket.error as e:  # se ocorrer algum erro, imprime o erro do socket
             print('Erro de Socket: ', str(e))
@@ -241,7 +248,7 @@ while msg != 'esc':
     # se o estado da FSM for 'SENDING', este programa envia o conteúdo da variável 'msg' para o EnviSim
     while sttMM == Stt.SENDING:
         # print('<< sending >>')
-        print('enviando = ', msg)
+        #print('enviando = ', msg)
         if msg != '':  # testa se a variável 'msg' não está vazia
             try:
                 sock.sendall(msg.encode('utf-8'))  # envia a mensagem via socket
@@ -260,12 +267,78 @@ while msg != 'esc':
             break
 
     # estado para testes - pode ser deletado no final...
-    while sttMM == Stt.FOR_TESTS:
-        print('>> state FOR_TESTS <<')
+    while sttMM == Stt.WANDERING:
+        print('>> state WANDERING << ', nofWandSteps)
+        # este atraso é apenas para efeitos visuais - remova-o para simulações mais rápidas
 
-        # coloque aqui qualquer código que vc queira testar...
+        if subSttWand == 0:  # substado zero, pedir a posição atual no grid do EnviSim
+            rscSeqWand = [0, -1, -1, -1, -1]  # 0=não tem ouro, cria uma lista para rascunho
+            # criar msg = request for distância = 0
+            msg = create_msg(4, 0)  # (4,0) porque 4='req_forward' e 0=distância
+            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
+            subSttWand = 1  # prox substado será o abaixo
+            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
+        elif subSttWand == 1:  # faz uma escolha randômica de um comando
+            rscSeqWand[1] = idxInpSensor  # rscSeqWand[0] coloca 'onde está' no grid
+            # sorteia um dos comandos, restritos, a ser enviado para o EnviSim
+            idx_rest = [0, 1, 3, 4, 5, 9, 11, 12, 13]  # indxs restritos
+            idx_rand = random.choice(idx_rest)  # escolhe um desses indxs
+            rscSeqWand[2] = idx_rand  # em rscSeqWand[1] coloca o 'comando' escolhido (idx_rand)
+            # criar msg = idx_rand e dist=1
+            msg = create_msg(idx_rand, 1)  # idx_rand=comando sorteado, 1=distância
+            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
+            subSttWand = 2  # prox substado será o abaixo
+            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
+        elif subSttWand == 2:  # veio com a resposta do que acontece depois do comando
+            rscSeqWand[3] = idxInpSensor  # em rscSeqWand[2] coloca o 'resultado'
+
+            # esse if decide se o label será bom, ruim ou neutro
+            if idxInpSensor in [0, 18]:  # nothing, none
+                rscSeqWand[4] = 0
+            elif idxInpSensor in [3, 8, 9, 11]:  # qq um que tenha flash
+                rscSeqWand[4] = 2
+            elif idxInpSensor in [1, 7, 10]:  # qq um que tenha breeze ou stench
+                rscSeqWand[4] = -1
+            elif idxInpSensor in [6, 12, 13, 14]:  # qq um que tenha obstáculo
+                rscSeqWand[4] = -2
+            elif idxInpSensor in [2, 16]:  # qq um que tenha morte é mau
+                rscSeqWand[4] = -5
+            elif idxInpSensor in [4, 5]:  # encontrou goal ou o initial
+                rscSeqWand[4] = 2.5
+            elif idxInpSensor in [15]:  # encontrou cannot *
+                rscSeqWand[4] = -2
+            elif idxInpSensor in [17]:  # veio grabbed *
+                rscSeqWand[0] = 1
+                rscSeqWand[4] = 6
+            elif idxInpSensor in [19]:  # veio restarted *
+                rscSeqWand[4] = 6
+            elif idxInpSensor in [20]:  # veio success *
+                rscSeqWand[4] = 10
+            seqWand.append(rscSeqWand)  # insere a sequência rascunho na lista final
+            rasc = random.randint(1, 12)
+
+            if rasc > 4:
+                msg = create_msg(3, 1)  # (3,1) porque 3='MOV_forward' e 1=dist (sempre anda +1)
+            elif rasc > 2:
+                msg = create_msg(12, 2)  # (12,2) porque 12='ROT_right' e 2=90 (gira)
+            else:
+                msg = create_msg(11, 2)  # (11,2) porque 11='ROT_left' e 2=90 (gira)
+            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
+            subSttWand = 3  # prox substado será o abaixo
+            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
+        elif subSttWand == 3:  # andou uma casa no grid (ou morreu, colidiu, etc)
+            if nofWandSteps > 0:
+                nofWandSteps = nofWandSteps-1  # decrementa o número de steps coletando dados
+                subSttWand = 0  # volta o substado para zero
+                sttMM = Stt.WANDERING  # prox estado é este mesmo (WANDERING)
+            else:  # fim do vaguear, nofWandSteps==0, salvar o arquivo
+                with open(arqv_csv, mode='w', newline='') as file:
+                    writer = csv.writer(file)
+                    writer.writerows(seqWand)
+                    print('Sessão gravada com sucesso')
+                    msg = 'esc'
+                    sttMM = Stt.EXCEPTIONS
         break
-
 
 else:  # se msg == 'esc' esse processo (programa) será fechado
     sock.close()  # close the socket

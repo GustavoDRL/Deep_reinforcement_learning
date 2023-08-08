@@ -17,7 +17,7 @@ class Stt(Enum):
     RESTARTING = 7  # estado da FSM que reinicia uma jornada dentro do EnviSim
     EXCEPTIONS = 8  # estado para atender mensagens de grande interesse: morreu, sucesso, não pode
     ERRORS = 9  # estado para lidar com erros
-    FOR_TESTS = 10  # estado para qualquer teste, se necessário (pode ser excluído)
+    WANDERING = 10  # estado para qualquer teste, se necessário (pode ser excluído)
 
 
 # Enumeração dos estados da submáquina de estados (subFSM)
@@ -44,7 +44,7 @@ sttSUBfsm = SubStt.RES  # inicia o status da subFSM como SubStt.RES
 #   ["r90", 1], ["r90", 2], ["r90", d], ["l45", 1], ["l45", 2], ["l45", d],
 #   ["l90", 1], ["l90", 2], ["l90", d] ]
 # a var 'd' indica quantidade de casas no grid, a partir da posição atual.
-InfoReqSeq = [["fwd", 1],["l90", 1],["r90", 1]]
+InfoReqSeq = [["fwd", 1], ["r90", 1], ["l90", 1]]
 nofInfoRequest = len(InfoReqSeq)  # Número de requests que o agente faz p/ o EnviSim antes de decidir
 # a cada request, o programa salvará em um array (com nofInfoRequest elementos x 32 bits)
 CurrentSensBits = np.zeros((nofInfoRequest, 32), dtype=np.int32)  # array c/ nofInfoRequest vals de 32 bits
@@ -215,8 +215,8 @@ DIRnw: str = LstMsgEStoAG[6][1][7]
 # --(end) -- mensagens trocadas entre AGENTE <-> Wumpus ----
 
 # as variáveis usadas no loop de simulação
-iterNum = 0  # conta o número de iterações executadas até agora
-energy = 500000  # quantidade total de energia (número de iterações) disponível para o agente
+iterNum = 0 # conta o número de iterações executadas até agora
+energy = 5000  # quantidade total de energia (número de iterações) disponível para o agente
 carryRWD: int = 0  # se o agente carrega a recompensa
 cntNofReqs: int = 0  # contador para o número de solicitações já feitas
 msg = ''  # string que concatena a mensagem que será enviada para EnviSim
@@ -232,7 +232,17 @@ strCode = ''  # str que recebe o código para exceções, erros, etc.
 idxInpSensor: int = 0  # índice que indica qual sensor de entrada foi ativado
 decision: int = 0  # índice que é retornado de Cogniton.infer() -> int
 
-delaySec = 0.1  # atraso em segundos apenas para efeitos visuais
+delaySec = 0  # atraso em segundos apenas para efeitos visuais
+
+
+
+
+
+modoDados = 0  # modo de coleta de dados para treinar uma rede neural
+seqWand = []  # lista com os dados da sequência ao vaguear
+nofWandSteps = 500  # num de passos para vaguear e coletar dados
+subSttWand = 0  # sub estado do modoDados
+arqv_csv = "dados_Wandering.csv"  # nome do arqv gravação da sequência Wandering
 
 # ---.(end).---  variables and constants ---.---
 # sys.exit(0)

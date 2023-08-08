@@ -2,11 +2,9 @@
 
 import random
 import json
-import time
-from typing import List
-
 import numpy as np
-import sys
+from tabulate import tabulate
+import matplotlib.pyplot as plt
 
 from Agent_Client_Setup import Stt, InpSensors, OutNeurons
 
@@ -18,11 +16,6 @@ from Agent_Client_Setup import keyMagACT, keyMagMOV, keyMagREQ, keyMagROT, ACTgr
     DIRn, DIRne, DIRe, DIRse, DIRs, DIRsw, DIRw, DIRnw
 
 
-#inicia seed
-random.seed(42)
-#Variaveis Globais
-caminho = [0, 0] #[frente/tras, esquerda/direita]
-estado = 0
 # este método é usado para 'analisar a resposta/feedback' recebido do EnviSim
 def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
     outy = -1  # por default, o índice de saída é um índice de erro
@@ -44,170 +37,136 @@ def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
         else:
             outy = OutNeurons.index("out_act_nill")
     return outy
+
+
 # MÉTODO NO QUAL VOCÊ VAI INSERIR INTELIGÊNCIA NO AGENTE !!!
 # este método é usado para 'inferência', ou seja, para tomar decisões
+
+## Global
+qtable = np.zeros((125, 4))
+# Criando um dicionário para armazenar as combinações e seus índices
+comb_dict = {}
+indice = 0
+# Loop para variar a primeira variável
+for var1 in range(1, 6):
+    # Loop para variar a segunda variável
+    for var2 in range(1, 6):
+        # Loop para variar a terceira variável
+        for var3 in range(1, 6):
+            # Mapeando a combinação para o índice no dicionário
+            comb_dict[(var1, var2, var3)] = indice
+            indice += 1
+
+state = 0
+done = False
+cont = 0
+episodes = 0
+num_iter = 100
+energia = 30
+# Hyperparameters
+alpha = 0.5  # Learning rate
+gamma = 0.9  # Discount factor
+epsilon = 1.5  # Amount of randomness in the action selection
+epsilon_decay = 0.001  # Fixed amount to decrease
+# List of outcomes to plot
+outcomes = np.zeros(num_iter)
+
+
+def resume_entrada(leitura):
+    resum_entry = 1
+    if leitura in [0, 5]:  # nothing, none
+        resum_entry = 1
+    elif leitura in [3, 8, 9, 11]:  # qq um que tenha flash
+        resum_entry = 2
+    elif leitura in [1, 7, 10]:  # qq um que tenha breeze ou stench
+        resum_entry = 3
+    elif leitura in [2, 6, 12, 15]:  # qq um que tenha obstáculo
+        resum_entry = 4
+    elif leitura in [4]:  # encontrou goal
+        resum_entry = 5
+    return resum_entry
+
+###################### Q Learning ###########################
+
 def infer(vecInpSens: np.int32) -> int:
-    print('infer: ', len(vecInpSens), ' ', vecInpSens)
-    outy = -1  # por default, o índice de saída é um índice de erro
+    global qtable, state, done, alpha, gamma, epsilon, epsilon_decay, cont, episodes, num_iter, energia, comb_dict, outcomes
+    decisao = [3, 11, 12, 13]
+    leitura_frente = np.nonzero(vecInpSens[0])[0]
+    #print('leitura_frente', leitura_frente)
+    leitura_direita = np.nonzero(vecInpSens[1])[0]
+    #print('leitura_direita', leitura_direita)
+    leitura_esquerda = np.nonzero(vecInpSens[2])[0]
+    #print('leitura_esquerda', leitura_esquerda)
+    resum_entry_f = resume_entrada(leitura_frente)
+    #print('resumo_frente', resum_entry_f)
+    resum_entry_d = resume_entrada(leitura_direita)
+    #print('resumo_direita', resum_entry_d)
+    resum_entry_e = resume_entrada(leitura_esquerda)
+    #print('resumo_esquerda', resum_entry_e)
+    # Training
+    # Generate a random number between 0 and 1
+    rnd = np.random.random()
+    if not done and cont < energia and episodes < num_iter:
+        cont = cont + 1
+        # If random number < epsilon, take a random action
+        if rnd < epsilon:
+            action = random.randint(0, 3)
+        # Else, take the action with the highest value in the current state
+        else:
+            action = np.argmax(qtable[state])
+        # Implement this action and move the agent in the desired direction
+        new_state = comb_dict[(resum_entry_f, resum_entry_d, resum_entry_e)]
+        #print('new_satate', new_state)
+        # Reward function
+        if leitura_frente in [0, 5, 18]:  # nothing, none
+            reward = 0
+        elif leitura_frente in [3, 8, 9, 11]:  # qq um que tenha flash a frente
+            reward = 8
+        elif leitura_frente in [1, 7, 10]:  # qq um que tenha breeze ou stench
+            reward = -0.5
+        elif leitura_frente in [2, 6, 12, 13, 14, 16]:  # qq um que tenha obstáculo
+            reward = -2
+        elif leitura_frente in [4]:  # encontrou goal
+            reward = 50
+            done = True
+            print('Encontrou o ouro')
+            outcomes[episodes] = 1
 
-    # Matrizes com as p
-    #                    pegar/sair/frente/esquerda/direita/tras
-    m_decision = np.array([[0.0, 0.0, 0.9, 0.05, 0.05, 0.0],  # [ 0] = "inp_nothing"
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 1] = "inp_breeze"
-                           [0.0, 0.0, 0.0, 0.45, 0.45, 0.1],  # [ 2] = "inp_danger"
-                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 3] = "inp_flash"
-                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 4] = "inp_goal"
-                           [0.0, 0.0, 0.8, 0.1, 0.1, 0.0],  # [ 5] = "inp_initial"
-                           [0.0, 0.0, 0.0, 0.3, 0.3, 0.4],  # [ 6] = "inp_obstruction"
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 7] = "inp_stench"
-                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
-                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
-                           [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [10] = "inp_bs" brisa/stench
-                           [0.0, 0.0, 1.0, 0.0, 0.0, 0.0],  # [11] = "inp_fs" flash/stench
-                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [12] = "inp_boundary" (borda)
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0.0, 0.0, 0.0, 0.0, 0.0, 1.0],  # [15] = "inp_cannot"
-                           [0, 0, 0, 0, 0, 0],
-                           [0.0, 0.0, 0.0, 0.4, 0.4, 0.2],  # [17] = "inp_grabbed"
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0],
-                           [0, 0, 0, 0, 0, 0]])
-    #                    pegar/sair/frente/esquerda/direita/tras
-    m_decisionL = np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 0] = "inp_nothing"
-                            [0.0, 0.0, 0.6, 0.2, 0.2, 0.0],  # [ 1] = "inp_breeze"
-                            [0.0, 0.0, 0.5, 0.0, 0.5, 0.0],  # [ 2] = "inp_danger"
-                            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0],  # [ 3] = "inp_flash"
-                            [0.0, 0.0, 0.0, 100.0, 0.0, 0.0],  # [ 4] = "inp_goal"
-                            [0.0, 0.0, 0.8, 0.0, 0.2, 0.0],  # [ 5] = "inp_initial"
-                            [0.0, 0.0, 1.0, 0.0, 1.0, 0.0],  # [ 6] = "inp_obstruction"
-                            [0.0, 0.0, 0.4, 0.4, 0.2, 0.0],  # [ 7] = "inp_stench"
-                            [0.0, 0.0, 0.6, 10.0, 0.2, 0.0],  # [ 8] = "inp_bf" brisa/flash
-                            [0.0, 0.0, 0.2, 10.0, 0.1, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
-                            [0.0, 0.0, 0.4, 10.0, 0.3, 0.0],  # [10] = "inp_bs" brisa/stench
-                            [0.0, 0.0, 0.4, 10.0, 0.2, 0.0],  # [11] = "inp_fs" flash/stench
-                            [1.0, 1.0, 1.0, 0.0, 1.0, 1.0],  # [12] = "inp_boundary" (borda)
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0.0, 0.0, 1.0, 0.0, 1.0, 1.0],  # [15] = "inp_cannot"
-                            [0, 0, 0, 0, 0, 0],
-                            [0.0, 0.0, 1.0, 0.0, 1.0, 1.0],  # [17] = "inp_grabbed"
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0]])
-    #                    pegar/sair/frente/esquerda/direita/tras
-    m_decisionR = np.array([[1.0, 1.0, 1.0, 1.0, 1.0, 1.0],  # [ 0] = "inp_nothing"
-                            [0.0, 0.0, 0.6, 0.3, 0.1, 0.0],  # [ 1] = "inp_breeze"
-                            [0.0, 0.0, 0.5, 0.5, 0.0, 0.0],  # [ 2] = "inp_danger"
-                            [0.0, 0.0, 0.0, 0.0, 10.0, 0.0],  # [ 3] = "inp_flash"
-                            [0.0, 0.0, 0.0, 0.0, 100.0, 0.0],  # [ 4] = "inp_goal"
-                            [0.0, 0.0, 0.8, 0.2, 0.0, 0.0],  # [ 5] = "inp_initial"
-                            [0.0, 0.0, 0.5, 0.5, 0.0, 0.0],  # [ 6] = "inp_obstruction"
-                            [0.0, 0.0, 0.4, 0.4, 0.2, 0.0],  # [ 7] = "inp_stench"
-                            [0.0, 0.0, 0.1, 0.1, 10.0, 0.0],  # [ 8] = "inp_bf" brisa/flash
-                            [0.0, 0.0, 0.1, 0.1, 10.0, 0.0],  # [ 9] = "inp_bfs" brisa/flash/stench
-                            [0.0, 0.0, 0.2, 0.4, 10.0, 0.0],  # [10] = "inp_bs" brisa/stench
-                            [0.0, 0.0, 0.1, 0.1, 10.0, 0.0],  # [11] = "inp_fs" flash/stench
-                            [0.0, 0.0, 1.0, 1.0, 0.0, 1.0],  # [12] = "inp_boundary" (borda)
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0.0, 0.0, 0.5, 0.5, 0.0, 0.0],  # [15] = "inp_cannot"
-                            [0, 0, 0, 0, 0, 0],
-                            [0.0, 0.0, 0.8, 0.2, 0.2, 0.0],  # [17] = "inp_grabbed"
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0],
-                            [0, 0, 0, 0, 0, 0]])
-    decisao = [0, 1, 3, 11, 12, 13]
-    prob_entrada_f = np.dot(vecInpSens[0], m_decision)
-    print("prob_entrada_f", prob_entrada_f)
-    prob_entrada_l = np.dot(vecInpSens[1], m_decisionL)
-    print("prob_entrada_l", prob_entrada_l)
-    prob_entrada_r = np.dot(vecInpSens[2], m_decisionR)
-    print("prob_entrada_r", prob_entrada_r)
-    prob_3Entradas = probabilistic_distribution(np.multiply(np.multiply(prob_entrada_f, prob_entrada_l), prob_entrada_r))
-    print("prob_3Entradas", prob_3Entradas)
-    prob = 0
-    act = 0
-    global estado
-        # Pegar ouro
-    if estado == 1:
-        outy = 0
-        print('out: ', OutNeurons[outy])
-        print('Estado: ', estado)
-        estado = 2
-        return outy
-    if estado == 2:
-        estado=0
+
+        #print('reward ', reward)
+        # Update Q(s,a)
+        qtable[state, action] = qtable[state, action] + alpha * (reward + gamma * np.max(qtable[new_state]) - qtable[state, action])
+        # Update our current state
+        state = new_state
+    elif episodes < num_iter:
+        epsilon = max(epsilon - epsilon_decay, 0)
+        done = False
+        cont = 0
+        episodes = episodes + 1
+        print('###########################################################')
+        print('Episodios: ', episodes)
+        # Convert the Q-table index to integers
+        qtable_with_index = np.insert(qtable, 0, np.arange(qtable.shape[0]).astype(int), axis=1)
+        # Filter rows with all values >= 0.001
+        filtered_rows = qtable_with_index[np.any(qtable_with_index[:, 1:] >= 0.001, axis=1)]
+        # Format the filtered Q-table for printing using tabulate
+        headers = ["Index", "Frente", "Direita", "Esquerda", "Trás"]
+        table = tabulate(filtered_rows, headers, tablefmt="grid", floatfmt=".3f")
+        ("Q-table after training (filtered):")
+        print(table)
+        # Update epsilon
+        epsilon = max(epsilon - epsilon_decay, 0)
         return 8
-    else:
-        #Direciona o codigo para o caso deterministico para sempre ir direto ao ouro
-        if vecInpSens[0, 4] == 1:
-            estado = 1
-            return 3
-        #Deslocamento randomico pelo mapa para tenmtar achar o ouro
-        random_number = random.randrange(0, 100)/100
-        print('random_number', random_number)
-        for element in prob_3Entradas:
-            prob = element + prob
-            if prob < random_number:
-                act = act+1
-                print('prob ', prob)
-            else:
-                print('act ', act)
-                outy = decisao[act]
-                print('out: ', OutNeurons[outy])
-                print('caminho: ', caminho)
-                return outy
-def probabilistic_distribution(scores):
-    # Identify non-zero elements
-    non_zero_mask = scores != 0
-
-    # Normalize non-zero elements' scores
-    non_zero_scores = scores[non_zero_mask]
-    max_non_zero_score = np.max(non_zero_scores)
-    exp_non_zero_scores = np.exp(non_zero_scores - max_non_zero_score)
-
-    # Calculate the sum of all exponential scores for non-zero elements
-    sum_exp_non_zero_scores = np.sum(exp_non_zero_scores)
-
-    # Compute the probabilities for each non-zero element
-    probabilities = np.zeros_like(scores)
-    probabilities[non_zero_mask] = exp_non_zero_scores / sum_exp_non_zero_scores
-
-    return probabilities
+    elif episodes == num_iter:
+        print('Treino concluido')
+        plt.figure(figsize=(12, 5))
+        plt.xlabel("Run number")
+        plt.ylabel("Outcome")
+        ax = plt.gca()
+        ax.set_facecolor('#efeeea')
+        plt.bar(range(len(outcomes)), outcomes, color="#0A047A", width=1.0)
+        plt.show()
+    return decisao[action]
 # este método cria uma msg para o EnviSim solicitando informações do Wumpus World
 # input: indx de uma msg a ser enviada, e a distância da posição atual na grade
 def create_msg(indx_out: int, dist: int) -> str:
