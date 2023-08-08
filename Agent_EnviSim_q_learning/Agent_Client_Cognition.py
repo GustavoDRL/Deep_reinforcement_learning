@@ -156,9 +156,6 @@ def infer(vecInpSens: np.int32) -> int:
         print(table)
         # Update epsilon
         epsilon = max(epsilon - epsilon_decay, 0)
-        return 8
-    elif episodes == num_iter:
-        print('Treino concluido')
         plt.figure(figsize=(12, 5))
         plt.xlabel("Run number")
         plt.ylabel("Outcome")
@@ -166,6 +163,9 @@ def infer(vecInpSens: np.int32) -> int:
         ax.set_facecolor('#efeeea')
         plt.bar(range(len(outcomes)), outcomes, color="#0A047A", width=1.0)
         plt.show()
+        return 8
+    elif episodes == num_iter:
+        print('Treino concluido')
     return decisao[action]
 # este método cria uma msg para o EnviSim solicitando informações do Wumpus World
 # input: indx de uma msg a ser enviada, e a distância da posição atual na grade
