@@ -1,0 +1,11 @@
+       
+       
+        # Convert the Q-table index to integers
+        qtable_with_index = np.insert(qtable, 0, np.arange(qtable.shape[0]).astype(int), axis=1)
+        # Filter rows with all values >= 0.001
+        filtered_rows = qtable_with_index[np.any(qtable_with_index[:, 1:] >= 0.001, axis=1)]
+        # Format the filtered Q-table for printing using tabulate
+        headers = ["Index", "Frente", "Direita", "Esquerda", "Trás"]
+        table = tabulate(filtered_rows, headers, tablefmt="grid", floatfmt=".3f")
+        ("Q-table after training (filtered):")
+        print(table)

@@ -23,7 +23,7 @@ host_name = socket.gethostname()  # obter o nome deste computador
 host_IP = socket.gethostbyname(host_name)  # obter o endereço IP deste computador (intranet)
 IPC_port = 15051  # número do PORT (use o mesmo número de PORTA no programa EnviSim)
 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # criar um socket = sock
-server_address = (host_IP, IPC_port)  # a variável endereço_servidor contém: o IP + porta_IPC
+server_address = ("172.24.176.1", IPC_port)  # a variável endereço_servidor contém: o IP + porta_IPC
 # apenas para teste: imprimir a variável endereço_servidor
 # print('server: {} - port: {}'.format(host_IP,IPC_port))
 # print('server: {}'.format(server_address))
@@ -223,13 +223,12 @@ while msg != 'esc':
 
             sttMM = Stt.SENDING  # altera o estado da máquina para SENDING
             break
-        sys.exit(-2)
+
 
     # este é um estado para testes, que pode ser excluído na versão final deste programa
     while sttMM == Stt.ERRORS:
         print('--> estado ERRORS::')
         print(strCode)
-        sys.exit(-1)
         # você pode colocar aqui qualquer tipo de código para tratar erros
 
     # se o estado principal da FSM for 'RECEIVING', aguarda uma resposta do EnviSim
@@ -266,84 +265,6 @@ while msg != 'esc':
             sttMM = Stt.ERRORS  # altera para o estado que trata os ERROS
             break
 
-    # estado para testes - pode ser deletado no final...
-    while sttMM == Stt.WANDERING:
-        print('>> state WANDERING << ', nofWandSteps)
-        # este atraso é apenas para efeitos visuais - remova-o para simulações mais rápidas
 
-        if subSttWand == 0:  # substado zero, pedir a posição atual no grid do EnviSim
-            rscSeqWand = [0, -1, -1, -1, -1]  # 0=não tem ouro, cria uma lista para rascunho
-            # criar msg = request for distância = 0
-            msg = create_msg(4, 0)  # (4,0) porque 4='req_forward' e 0=distância
-            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
-            subSttWand = 1  # prox substado será o abaixo
-            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
-        elif subSttWand == 1:  # faz uma escolha randômica de um comando
-            rscSeqWand[1] = idxInpSensor  # rscSeqWand[0] coloca 'onde está' no grid
-            # sorteia um dos comandos, restritos, a ser enviado para o EnviSim
-            idx_rest = [0, 1, 3, 4, 5, 9, 11, 12, 13]  # indxs restritos
-            idx_rand = random.choice(idx_rest)  # escolhe um desses indxs
-            rscSeqWand[2] = idx_rand  # em rscSeqWand[1] coloca o 'comando' escolhido (idx_rand)
-            # criar msg = idx_rand e dist=1
-            msg = create_msg(idx_rand, 1)  # idx_rand=comando sorteado, 1=distância
-            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
-            subSttWand = 2  # prox substado será o abaixo
-            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
-        elif subSttWand == 2:  # veio com a resposta do que acontece depois do comando
-            rscSeqWand[3] = idxInpSensor  # em rscSeqWand[2] coloca o 'resultado'
-
-            # esse if decide se o label será bom, ruim ou neutro
-            if idxInpSensor in [0, 18]:  # nothing, none
-                rscSeqWand[4] = 0
-            elif idxInpSensor in [3, 8, 9, 11]:  # qq um que tenha flash
-                rscSeqWand[4] = 2
-            elif idxInpSensor in [1, 7, 10]:  # qq um que tenha breeze ou stench
-                rscSeqWand[4] = -1
-            elif idxInpSensor in [6, 12, 13, 14]:  # qq um que tenha obstáculo
-                rscSeqWand[4] = -2
-            elif idxInpSensor in [2, 16]:  # qq um que tenha morte é mau
-                rscSeqWand[4] = -5
-            elif idxInpSensor in [4, 5]:  # encontrou goal ou o initial
-                rscSeqWand[4] = 2.5
-            elif idxInpSensor in [15]:  # encontrou cannot *
-                rscSeqWand[4] = -2
-            elif idxInpSensor in [17]:  # veio grabbed *
-                rscSeqWand[0] = 1
-                rscSeqWand[4] = 6
-            elif idxInpSensor in [19]:  # veio restarted *
-                rscSeqWand[4] = 6
-            elif idxInpSensor in [20]:  # veio success *
-                rscSeqWand[4] = 10
-            seqWand.append(rscSeqWand)  # insere a sequência rascunho na lista final
-            rasc = random.randint(1, 12)
-
-            if rasc > 4:
-                msg = create_msg(3, 1)  # (3,1) porque 3='MOV_forward' e 1=dist (sempre anda +1)
-            elif rasc > 2:
-                msg = create_msg(12, 2)  # (12,2) porque 12='ROT_right' e 2=90 (gira)
-            else:
-                msg = create_msg(11, 2)  # (11,2) porque 11='ROT_left' e 2=90 (gira)
-            # prox estado da mainFSM => enviar (envia, recebe, interpreta, decide ==> Stt.WANDERING)
-            subSttWand = 3  # prox substado será o abaixo
-            sttMM = Stt.SENDING  # prox estado é enviar a mensagem
-        elif subSttWand == 3:  # andou uma casa no grid (ou morreu, colidiu, etc)
-            if nofWandSteps > 0:
-                nofWandSteps = nofWandSteps-1  # decrementa o número de steps coletando dados
-                subSttWand = 0  # volta o substado para zero
-                sttMM = Stt.WANDERING  # prox estado é este mesmo (WANDERING)
-            else:  # fim do vaguear, nofWandSteps==0, salvar o arquivo
-                with open(arqv_csv, mode='w', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerows(seqWand)
-                    print('Sessão gravada com sucesso')
-                    msg = 'esc'
-                    sttMM = Stt.EXCEPTIONS
-        break
-
-else:  # se msg == 'esc' esse processo (programa) será fechado
-    sock.close()  # close the socket
-    print('<< END of process >>')  # imprime a mensagem de finalização do processo
-
-sys.exit(0)
 # ----(end)----- MAIN = end of main program  --------
 

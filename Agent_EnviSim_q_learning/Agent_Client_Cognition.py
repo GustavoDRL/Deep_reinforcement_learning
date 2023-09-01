@@ -5,6 +5,7 @@ import json
 import numpy as np
 from tabulate import tabulate
 import matplotlib.pyplot as plt
+from datetime import datetime
 
 from Agent_Client_Setup import Stt, InpSensors, OutNeurons
 
@@ -44,6 +45,7 @@ def feedback_analysis(vecInpSens: np.int32, carryRWD: int) -> int:
 
 ## Global
 qtable = np.zeros((125, 4))
+#qtable_treinada = np.load('nome_do_arquivo.npy')
 # Criando um dicionário para armazenar as combinações e seus índices
 comb_dict = {}
 indice = 0
@@ -60,17 +62,18 @@ for var1 in range(1, 6):
 state = 0
 done = False
 cont = 0
-episodes = 0
-num_iter = 100
-energia = 30
+episodes = 1
+num_iter = 505
+energia = 500
+intervalo_display = 500
 # Hyperparameters
 alpha = 0.5  # Learning rate
 gamma = 0.9  # Discount factor
-epsilon = 1.5  # Amount of randomness in the action selection
+epsilon = 1.0  # Amount of randomness in the action selection
 epsilon_decay = 0.001  # Fixed amount to decrease
 # List of outcomes to plot
 outcomes = np.zeros(num_iter)
-
+numero_passos = np.zeros(num_iter)
 
 def resume_entrada(leitura):
     resum_entry = 1
@@ -89,8 +92,9 @@ def resume_entrada(leitura):
 ###################### Q Learning ###########################
 
 def infer(vecInpSens: np.int32) -> int:
-    global qtable, state, done, alpha, gamma, epsilon, epsilon_decay, cont, episodes, num_iter, energia, comb_dict, outcomes
-    decisao = [3, 11, 12, 13]
+    global qtable, intervalo_display, state, done, alpha, gamma, epsilon, epsilon_decay, cont, episodes, num_iter, energia, comb_dict, outcomes
+    decisao = [3, 11, 12, 13]    # Frente / Esquerda / Direita/ Tras
+    randon_decisao = [0, 0, 0, 1, 1, 2, 2, 3]
     leitura_frente = np.nonzero(vecInpSens[0])[0]
     #print('leitura_frente', leitura_frente)
     leitura_direita = np.nonzero(vecInpSens[1])[0]
@@ -108,9 +112,10 @@ def infer(vecInpSens: np.int32) -> int:
     rnd = np.random.random()
     if not done and cont < energia and episodes < num_iter:
         cont = cont + 1
+        numero_passos[episodes] = cont
         # If random number < epsilon, take a random action
         if rnd < epsilon:
-            action = random.randint(0, 3)
+            action = randon_decisao[random.randint(0, 7)]
         # Else, take the action with the highest value in the current state
         else:
             action = np.argmax(qtable[state])
@@ -121,7 +126,7 @@ def infer(vecInpSens: np.int32) -> int:
         if leitura_frente in [0, 5, 18]:  # nothing, none
             reward = 0
         elif leitura_frente in [3, 8, 9, 11]:  # qq um que tenha flash a frente
-            reward = 8
+            reward = 0.1
         elif leitura_frente in [1, 7, 10]:  # qq um que tenha breeze ou stench
             reward = -0.5
         elif leitura_frente in [2, 6, 12, 13, 14, 16]:  # qq um que tenha obstáculo
@@ -131,8 +136,8 @@ def infer(vecInpSens: np.int32) -> int:
             done = True
             print('Encontrou o ouro')
             outcomes[episodes] = 1
-
-
+        else:
+            reward = 0
         #print('reward ', reward)
         # Update Q(s,a)
         qtable[state, action] = qtable[state, action] + alpha * (reward + gamma * np.max(qtable[new_state]) - qtable[state, action])
@@ -143,19 +148,11 @@ def infer(vecInpSens: np.int32) -> int:
         done = False
         cont = 0
         episodes = episodes + 1
-        print('###########################################################')
         print('Episodios: ', episodes)
-        # Convert the Q-table index to integers
-        qtable_with_index = np.insert(qtable, 0, np.arange(qtable.shape[0]).astype(int), axis=1)
-        # Filter rows with all values >= 0.001
-        filtered_rows = qtable_with_index[np.any(qtable_with_index[:, 1:] >= 0.001, axis=1)]
-        # Format the filtered Q-table for printing using tabulate
-        headers = ["Index", "Frente", "Direita", "Esquerda", "Trás"]
-        table = tabulate(filtered_rows, headers, tablefmt="grid", floatfmt=".3f")
-        ("Q-table after training (filtered):")
-        print(table)
         # Update epsilon
         epsilon = max(epsilon - epsilon_decay, 0)
+        return 8
+    if episodes % intervalo_display == 0 and cont == 1:
         plt.figure(figsize=(12, 5))
         plt.xlabel("Run number")
         plt.ylabel("Outcome")
@@ -163,9 +160,32 @@ def infer(vecInpSens: np.int32) -> int:
         ax.set_facecolor('#efeeea')
         plt.bar(range(len(outcomes)), outcomes, color="#0A047A", width=1.0)
         plt.show()
-        return 8
-    elif episodes == num_iter:
-        print('Treino concluido')
+        plt.figure(figsize=(12, 5))
+        plt.xlabel("Run number")
+        plt.ylabel("Numero de passos")
+        ax = plt.gca()
+        ax.set_facecolor('#efeeea')
+        plt.bar(range(len(numero_passos)), numero_passos, color="#0A047A", width=1.0)
+        plt.show()
+        print(qtable)
+        # Obter a data e hora atual
+        data_hora_atual = datetime.now()
+        formato_data_hora = data_hora_atual.strftime('%Y-%m-%d_%H-%M-%S')  # Formato: AAAA-MM-DD_HH-MM-SS
+        # Nome do arquivo com a data e hora atual
+        nome_arquivo1 = f'q_table_energia_{energia}_iteracao_{episodes}_hora_{formato_data_hora}.npy'
+        # Salvar o numpy array no arquivo com o nome incluindo a data e hora
+        np.save(nome_arquivo1, qtable)
+        # Nome do arquivo com a data e hora atual
+        nome_arquivo2 = f'outcome_{formato_data_hora}.npy'
+        # Salvar o numpy array no arquivo com o nome incluindo a data e hora
+        np.save(nome_arquivo2, outcomes)
+        # Nome do arquivo com a data e hora atual
+        nome_arquivo3 = f'numero_de_passos_{formato_data_hora}.npy'
+        # Salvar o numpy array no arquivo com o nome incluindo a data e hora
+        np.save(nome_arquivo3, numero_passos)
+        '''energia = energia + 5
+        print('Energia', energia)'''
+
     return decisao[action]
 # este método cria uma msg para o EnviSim solicitando informações do Wumpus World
 # input: indx de uma msg a ser enviada, e a distância da posição atual na grade
